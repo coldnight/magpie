@@ -146,7 +146,6 @@ class MagpieClient(EventHandler, XMPPFeatureHandler):
             else:
                 if body and body.startswith("@"):
                     aid, content = AT_MSG_P.findall(body)[0]
-                    print aid, content
                     self.qq.send_message_with_aid(aid, content)
         logger.info("receive message '{0}' from {1}"
                          .format(body, stanza.from_jid))
@@ -291,7 +290,6 @@ class QQClient(WebQQClient):
             self.set_control_msg(u"[S] 没有到 @{0} 的映射".format(_id))
             return
         if item.get("type") == AID.T_GRP:
-            print item.get("uin")
             self.hub.send_group_msg(item.get("uin"), content)
 
     @sess_message_handler

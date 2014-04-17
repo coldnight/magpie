@@ -19,7 +19,7 @@ entry_points = {
 
 
 setup(
-    name = "twqq",
+    name = "magpie",
     version = magpie.__version__,
     description = "An application bridging WebQQ and XMPP",
     long_description = open("README.rst").read(),
