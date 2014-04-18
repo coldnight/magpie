@@ -301,7 +301,7 @@ class QQClient(WebQQClient):
                 self.hub.recv_file(guid, lcid, from_uin, self.store_file)
                 return True, ""
             else:
-                return True, u"你取消了接收 {0} 发送的文件 {1}".format(name, tip)
+                return True, u"[S] 你取消了接收 {0} 发送的文件 {1}".format(name, tip)
 
         self.xmpp_client.input_queue.append(tip, callback)
 
@@ -310,7 +310,7 @@ class QQClient(WebQQClient):
         with open(path, 'wb') as f:
             f.write(data)
 
-        self.send_control_msg(u"文件已接收, 存放在: {0}".format(path))
+        self.send_control_msg(u"[S] 文件已接收, 存放在: {0}".format(path))
 
     @discu_message_handler
     def handle_discu_message(self, did, from_uin, content, source):
