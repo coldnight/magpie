@@ -4,7 +4,7 @@ WebQQ 不爽? Wine 和虚拟机太耗费资源? 现在使用此程序, 让XMPP�
 此程序将WebQQ的消息重定向到指定的XMPP账号上, 然后通过XMPP账号接收
 和发送QQ消息.
 
-此项目在 Python 2.7 环境开发, 依赖 `twqq <https://github/coldnight/twqq>`_ 
+此项目在 Python 2.7 环境开发, 依赖 `twqq <https://github.com/coldnight/twqq>`_ 
 也是在 Python 2.7 环境开发, 目前我也不是很清楚是否能够很好的支持 Python3.
 整体都是构建在 pycurl + tornado 的框架上, Python3 应该没有太大问题. 
 
