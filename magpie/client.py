@@ -7,6 +7,7 @@
 #   Desc    :   客户端
 #
 import re
+import os
 import logging
 
 from functools import partial
@@ -28,6 +29,7 @@ from twqq.client import WebQQClient
 from twqq.requests import kick_message_handler, PollMessageRequest
 from twqq.requests import system_message_handler, group_message_handler
 from twqq.requests import buddy_message_handler, BeforeLoginRequest
+from twqq.requests import file_message_handler
 from twqq.requests import register_request_handler
 from twqq.requests import Login2Request, FriendInfoRequest
 from twqq.requests import sess_message_handler, discu_message_handler
@@ -282,6 +284,33 @@ class QQClient(WebQQClient):
     @sess_message_handler
     def handle_sess_message(self, qid, from_uin, content, source):
         pass
+
+    @file_message_handler
+    def handle_file_message(self, from_uin, to_uin, lcid, guid, is_cancel,
+                            source):
+        name = self.hub.get_friends().get_show_name(from_uin)
+        if is_cancel:
+            tip = u"[S] {0} 取消了发送文件 {1}".format(name, guid)
+            self.send_control_msg(tip)
+            return
+
+        tip = u"[S] {0} 发送文件 {1} 是否同意[Y/n]".format(name, guid)
+
+        def callback(msg):
+            if msg.strip().lower() == "y":
+                self.hub.recv_file(guid, lcid, from_uin, self.store_file)
+                return True, ""
+            else:
+                return True, u"你取消了接收 {0} 发送的文件 {1}".format(name, tip)
+
+        self.xmpp_client.input_queue.append(tip, callback)
+
+    def store_file(self, fname, data):
+        path = os.path.join("/tmp", fname)
+        with open(path, 'wb') as f:
+            f.write(data)
+
+        self.send_control_msg(u"文件已接收, 存放在: {0}".format(path))
 
     @discu_message_handler
     def handle_discu_message(self, did, from_uin, content, source):

@@ -23,7 +23,7 @@ class InputQueue(object):
     """
 
     def __init__(self, send_cb):
-        self._queue = deque
+        self._queue = deque()
         self._send_cb = send_cb
         self.current_cb = None
         self.current_tip = None
