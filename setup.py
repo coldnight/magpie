@@ -9,7 +9,7 @@
 import magpie
 from setuptools import setup
 
-requires = ["tornado", "pycurl", "tornadohttpclient", "twqq==0.2.0",
+requires = ["tornado", "pycurl", "tornadohttpclient", "twqq==0.2.1",
             "pyxmpp2"]
 
 packages = ["magpie"]
