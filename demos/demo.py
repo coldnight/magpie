@@ -24,10 +24,16 @@ if __name__ == "__main__":
 
     # 输出日志
     handler = logging.StreamHandler()
+
+    # 如果你需要更加详细的 PyXMPP 日志, 可以将日志级别调为 logging.DEBUG
     handler.setLevel(logging.INFO)
+
     for logger in ("pyxmpp2.IN", "pyxmpp2.OUT", "twqq", "magpie"):
         logger = logging.getLogger(logger)
+
+        # 如果你需要更加详细的 PyXMPP 日志, 可以将日志级别调为 logging.DEBUG
         logger.setLevel(logging.INFO)
+
         logger.addHandler(handler)
         logger.propagate = False
 
