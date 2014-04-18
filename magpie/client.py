@@ -28,9 +28,10 @@ from twqq.client import WebQQClient
 from twqq.requests import kick_message_handler, PollMessageRequest
 from twqq.requests import system_message_handler, group_message_handler
 from twqq.requests import buddy_message_handler, BeforeLoginRequest
-from twqq.requests import register_request_handler, BuddyMsgRequest
+from twqq.requests import register_request_handler
 from twqq.requests import Login2Request, FriendInfoRequest
 from twqq.requests import sess_message_handler, discu_message_handler
+from twqq.objects import UniqueIds
 
 from magpie import __version__
 from magpie.queue import InputQueue
@@ -49,14 +50,14 @@ class MagpieClient(EventHandler, XMPPFeatureHandler):
     def __init__(self, QQ, QQ_PWD, xmpp_account, xmpp_pwd, control_account,
                  debug=True):
         self.qq = QQClient(QQ, QQ_PWD, debug)
-        self.qq.set_control_msg(self.send_control_msg)
+        self.qq.set_control_msg(self.send_control_msg, self)
         self.jid = JID(xmpp_account + '/Bridge')
         self.control_account = control_account
         self.input_queue = InputQueue(self.send_control_msg)
 
         settings = XMPPSettings(
-            {"software_name": "Clubot",
-             "software_version": __version__,
+            {"software_name": "Magpie",
+             "software_version": ".".join(str(x) for x in __version__),
              "software_os": "Linux",
              "tls_verify_peer": False,
              "starttls": True,
@@ -119,6 +120,11 @@ class MagpieClient(EventHandler, XMPPFeatureHandler):
         m = self.make_message(JID(self.control_account), "chat", msg)
         self.stream.send(m)
 
+    def send_status(self, statustext):
+        to_jid = JID(self.control_account)
+        p = Presence(status=statustext, to_jid=to_jid)
+        self.stream.send(p)
+
     @presence_stanza_handler("unsubscribed")
     def handle_presence_unsubscribed(self, stanza):
         logger.info(u"{0!r} acknowledged our subscrption cancelation"
@@ -145,10 +151,15 @@ class MagpieClient(EventHandler, XMPPFeatureHandler):
                 self.input_queue.input(body)
             else:
                 if body and body.startswith("@"):
-                    aid, content = AT_MSG_P.findall(body)[0]
-                    self.qq.send_message_with_aid(aid, content)
+                    tmp = AT_MSG_P.findall(body)
+                    if len(tmp) == 1 and len(tmp[0]) == 2:
+                        aid, content = tmp[0]
+                        self.qq.send_message_with_aid(aid, content)
+                    else:
+                        self.send_control_msg("[S] 我不明白你要干嘛.")
         logger.info("receive message '{0}' from {1}"
                          .format(body, stanza.from_jid))
+        return True
 
     @event_handler(DisconnectedEvent)
     def handle_disconnected(self, event):
@@ -190,52 +201,18 @@ class MagpieClient(EventHandler, XMPPFeatureHandler):
         logger.info(u"-- {0}".format(event))
 
 
-class AID(object):
-    """ 为WebQQ里的每个对象生成一个唯一标识, 用于 @
-    """
-    T_FRI = 0      # 好友
-    T_GRP = 1      # 群
-    T_DIS = 2      # 讨论组
-    T_TMP = 3      # 临时会话
-
-    def __init__(self):
-        self._last_id = 1
-        self._map = {}
-        self._aid_map = {}
-
-    def get(self, uin, _type=T_FRI):
-        """ 获取唯一标识,
-        :param uin: gcode/did/uin
-        :param _type: 类型
-        """
-        if uin in self._map:
-            return self._map[uin].get("_id")
-        else:
-            _id = self._last_id
-            self._last_id += 1
-            self._map[uin] = {"_id": _id, "type": _type}
-            self._aid_map[_id] = {"uin": uin, "type": _type}
-            return _id
-
-    def parse(self, _id):
-        """ 解析
-        """
-        return self._aid_map.get(_id)
-
-
 class QQClient(WebQQClient):
-    aid = AID()
 
     def handle_verify_code(self, path, r, uin):
         self.verify_img_path = path
         cb = partial(self.enter_verify_code, r=r, uin=uin)
-        self.input_queue(u"需要验证码, 请输入位于: {0} 位置的验证码"
+        self.input_queue(u"[S] 需要验证码, 请输入位于: {0} 位置的验证码"
                          .format(path), cb)
 
     @register_request_handler(BeforeLoginRequest)
     def handle_verify_check(self, request, resp, data):
         if not data:
-            self.send_control_msg("没有数据返回验证失败, 尝试重新登录")
+            self.send_control_msg("[S] 没有数据返回验证失败, 尝试重新登录")
             return
 
         args = request.get_back_args(data)
@@ -246,28 +223,30 @@ class QQClient(WebQQClient):
     @register_request_handler(Login2Request)
     def handle_login_errorcode(self, request, resp, data):
         if not resp.body:
-            self.send_control_msg(u"WebQQ 没有数据返回, 尝试重新登录")
+            self.send_control_msg(u"[S] WebQQ 没有数据返回, 尝试重新登录")
             return
 
         if data.get("retcode") != 0:
-            self.send_control_msg(u"WebQQ 登录失败: {0}"
+            self.send_control_msg(u"[S] WebQQ 登录失败: {0}"
                                   .format(data.get("retcode")))
 
     @register_request_handler(FriendInfoRequest)
     def handle_frind_info_erro(self, request, resp, data):
         if not resp.body:
-            self.send_control_msg(u"WebQQ 获取好友列表失败")
+            self.send_control_msg(u"[S] WebQQ 获取好友列表失败")
             return
 
         if data.get("retcode") != 0:
-            self.send_control_msg(u"WebQQ 获取好友列表失败"
+            self.send_control_msg(u"[S] WebQQ 获取好友列表失败"
                                   .format(data.get("retcode")))
             return
-        self.send_control_msg(u"WebQQ 登录成功")
+        self.send_control_msg(u"[S] WebQQ 登录成功")
 
     @kick_message_handler
     def handle_kick(self, message):
-        self.hub.relogin()
+        self.send_control_msg(u"[S] QQ 在别处登录")
+        # TODO
+        # self.hub.relogin()
 
     @system_message_handler
     def handle_friend_add(self, mtype, from_uin, account, message):
@@ -279,28 +258,40 @@ class QQClient(WebQQClient):
     def handle_group_message(self, member_nick, content, group_code,
                              send_uin, source):
         groupname = self.hub.get_groups().get_group_name(group_code)
-        self.send_control_msg(u"[Q][{0}({1})][{2}]\n{3}"
-                              .format(groupname,
-                                      self.aid.get(group_code, self.aid.T_GRP),
-                                      member_nick, content))
+        self.send_control_msg(u"[Q][{0}({1})][{2}({3})] {4}"
+                              .format(groupname, UniqueIds.get_id(group_code),
+                                      member_nick, UniqueIds.get_id(send_uin),
+                                      content))
 
     def send_message_with_aid(self, _id, content):
-        item = self.aid.parse(int(_id))
-        if not item:
-            self.set_control_msg(u"[S] 没有到 @{0} 的映射".format(_id))
+        self.xmpp_client.send_status(content)
+        uin, _type = UniqueIds.get(int(_id))
+        if uin is None or _type is None:
+            logger.info(UniqueIds._map)
+            self.send_control_msg(u"[S] 没有到 @{0} 的映射".format(_id))
             return
-        if item.get("type") == AID.T_GRP:
-            self.hub.send_group_msg(item.get("uin"), content)
+        if _type == UniqueIds.T_GRP:
+            self.hub.send_group_msg(uin, content)
+        elif _type == UniqueIds.T_FRI:
+            self.hub.send_buddy_msg(uin, content)
+        elif _type == UniqueIds.T_DIS:
+            self.hub.send_discu_msg(uin, content)
+        # elif _type == UniqueIds.T_TMP:
+        #     self.hub.send_sess_msg(uin, content)
 
     @sess_message_handler
     def handle_sess_message(self, qid, from_uin, content, source):
-        #TODO
         pass
 
     @discu_message_handler
     def handle_discu_message(self, did, from_uin, content, source):
-        #TODO
-        pass
+        name = self.hub.get_discu().get_name(did)
+        mname = self.hub.get_discu().get_mname(did, from_uin)
+        msg = "[D][{0}({1})][{2}({3})] {4}".format(name, UniqueIds.get_id(did),
+                                                   mname,
+                                                   UniqueIds.get_id(from_uin),
+                                                   content)
+        self.send_control_msg(msg)
 
     def send_discu_with_nick(self, nick, did, content):
         content = u"{0}: {1}".format(nick, content)
@@ -312,8 +303,10 @@ class QQClient(WebQQClient):
 
     @buddy_message_handler
     def handle_buddy_message(self, from_uin, content, source):
-        #TODO
-        pass
+        name = self.hub.get_friends().get_show_name(from_uin)
+        self.send_control_msg(u"[F][{0}({1})] {2}"
+                              .format(name, UniqueIds.get_id(from_uin),
+                                      content))
 
     @register_request_handler(PollMessageRequest)
     def handle_qq_errcode(self, request, resp, data):
@@ -325,30 +318,31 @@ class QQClient(WebQQClient):
             logger.error(u"获取登出消息 {0!r}".format(data))
             exit()
 
-    def send_msg_with_markname(self, markname, message, callback=None):
-        #TODO
-        request = self.hub.send_msg_with_markname(markname, message)
-        if request is None:
-            callback(False, u"不存在该好友")
+    # def send_msg_with_markname(self, markname, message, callback=None):
+    #     #TODO
+    #     request = self.hub.send_msg_with_markname(markname, message)
+    #     if request is None:
+    #         callback(False, u"不存在该好友")
 
-        self.message_requests[request] = callback
+    #     self.message_requests[request] = callback
 
-    @register_request_handler(BuddyMsgRequest)
-    def markname_message_callback(self, request, resp, data):
-        #TODO
-        callback = self.message_requests.get(request)
-        if not callback:
-            return
+    # @register_request_handler(BuddyMsgRequest)
+    # def markname_message_callback(self, request, resp, data):
+    #     #TODO
+    #     callback = self.message_requests.get(request)
+    #     if not callback:
+    #         return
 
-        if not data:
-            callback(False, u"服务端没有数据返回")
-            return
+    #     if not data:
+    #         callback(False, u"服务端没有数据返回")
+    #         return
 
-        if data.get("retcode") != 0:
-            callback(False, u"发送失败, 错误代码:".format(data.get("retcode")))
-            return
+    #     if data.get("retcode") != 0:
+    #         callback(False, u"发送失败, 错误代码:".format(data.get("retcode")))
+    #         return
 
-        callback(True)
+    #     callback(True)
 
-    def set_control_msg(self, cb):
+    def set_control_msg(self, cb, xmpp_client):
         self.send_control_msg = cb
+        self.xmpp_client = xmpp_client
