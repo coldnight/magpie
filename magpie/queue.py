@@ -53,7 +53,11 @@ class InputQueue(object):
             self._send_cb(self.current_tip)
 
     def input(self, content):
-        r, msg = self.current_cb(content)
+        r = self.current_cb(content)
+
+        if r is None:
+            r, msg = True, ""
+
         if msg.strip():
             self._send_cb(msg)
         if r:

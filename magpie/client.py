@@ -37,6 +37,7 @@ from twqq.objects import UniqueIds
 
 from magpie import __version__
 from magpie.queue import InputQueue
+from magpie.command import Command
 
 logger = logging.getLogger("magpie")
 
@@ -51,11 +52,12 @@ class MagpieClient(EventHandler, XMPPFeatureHandler):
 
     def __init__(self, QQ, QQ_PWD, xmpp_account, xmpp_pwd, control_account,
                  debug=True):
+        self.input_queue = InputQueue(self.send_control_msg)
         self.qq = QQClient(QQ, QQ_PWD, debug)
         self.qq.set_control_msg(self.send_control_msg, self)
+        self.command = Command(self, self.qq)
         self.jid = JID(xmpp_account + '/Bridge')
         self.control_account = control_account
-        self.input_queue = InputQueue(self.send_control_msg)
 
         settings = XMPPSettings(
             {"software_name": "Magpie",
@@ -152,13 +154,7 @@ class MagpieClient(EventHandler, XMPPFeatureHandler):
                     return True
                 self.input_queue.input(body)
             else:
-                if body and body.startswith("@"):
-                    tmp = AT_MSG_P.findall(body)
-                    if len(tmp) == 1 and len(tmp[0]) == 2:
-                        aid, content = tmp[0]
-                        self.qq.send_message_with_aid(aid, content)
-                    else:
-                        self.send_control_msg("[S] 我不明白你要干嘛.")
+                self.command.parse(body)
         logger.info("receive message '{0}' from {1}"
                          .format(body, stanza.from_jid))
         return True
@@ -208,8 +204,8 @@ class QQClient(WebQQClient):
     def handle_verify_code(self, path, r, uin):
         self.verify_img_path = path
         cb = partial(self.enter_verify_code, r=r, uin=uin)
-        self.input_queue(u"[S] 需要验证码, 请输入位于: {0} 位置的验证码"
-                         .format(path), cb)
+        self.input_queue.append(u"[S] 需要验证码, 请输入位于: {0} 位置的验证码"
+                                .format(path), cb)
 
     @register_request_handler(BeforeLoginRequest)
     def handle_verify_check(self, request, resp, data):
@@ -375,3 +371,4 @@ class QQClient(WebQQClient):
     def set_control_msg(self, cb, xmpp_client):
         self.send_control_msg = cb
         self.xmpp_client = xmpp_client
+        self.input_queue = xmpp_client.input_queue
