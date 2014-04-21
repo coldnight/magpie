@@ -46,7 +46,6 @@ class Command(object):
                 handler(*sre.groups(), **sre.groupdict())
 
     @register(r'-help')
-    @register("help")
     def help_info(self):
         """ 显示帮助信息
         """

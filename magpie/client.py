@@ -238,7 +238,7 @@ class QQClient(WebQQClient):
             self.send_control_msg(u"[S] WebQQ 获取好友列表失败"
                                   .format(data.get("retcode")))
             return
-        self.send_control_msg(u"[S] WebQQ 登录成功, 你可以发送 help 查看帮助.")
+        self.send_control_msg(u"[S] WebQQ 登录成功, 你可以发送 -help 查看帮助.")
 
     @kick_message_handler
     def handle_kick(self, message):
