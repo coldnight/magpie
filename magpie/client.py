@@ -350,31 +350,6 @@ class QQClient(WebQQClient):
             logger.error(u"获取登出消息 {0!r}".format(data))
             exit()
 
-    # def send_msg_with_markname(self, markname, message, callback=None):
-    #     #TODO
-    #     request = self.hub.send_msg_with_markname(markname, message)
-    #     if request is None:
-    #         callback(False, u"不存在该好友")
-
-    #     self.message_requests[request] = callback
-
-    # @register_request_handler(BuddyMsgRequest)
-    # def markname_message_callback(self, request, resp, data):
-    #     #TODO
-    #     callback = self.message_requests.get(request)
-    #     if not callback:
-    #         return
-
-    #     if not data:
-    #         callback(False, u"服务端没有数据返回")
-    #         return
-
-    #     if data.get("retcode") != 0:
-    #         callback(False, u"发送失败, 错误代码:".format(data.get("retcode")))
-    #         return
-
-    #     callback(True)
-
     def set_control_msg(self, cb, xmpp_client):
         self.send_control_msg = cb
         self.xmpp_client = xmpp_client
