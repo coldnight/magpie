@@ -9,6 +9,7 @@
 import re
 import os
 import logging
+import traceback
 
 from functools import partial
 
@@ -148,13 +149,17 @@ class MagpieClient(EventHandler, XMPPFeatureHandler):
         body = stanza.body
         frm = stanza.from_jid.bare().as_string()
         if frm == self.control_account:
-            if self.input_queue.need_input:
-                if not body:
-                    self.input_queue.send_tip()
-                    return True
-                self.input_queue.input(body)
-            else:
-                self.command.parse(body)
+            try:
+                if self.input_queue.need_input:
+                    if not body:
+                        self.input_queue.send_tip()
+                        return True
+                    self.input_queue.input(body)
+                else:
+                    self.command.parse(body)
+            except:
+                self.send_control_msg(u"处理消息时发生错误:\n{0}"
+                                      .format(traceback.format_exc()))
         logger.info("receive message '{0}' from {1}"
                          .format(body, stanza.from_jid))
         return True

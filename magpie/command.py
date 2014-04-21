@@ -9,6 +9,8 @@
 import re
 import inspect
 
+from twqq.objects import UniqueIds
+
 
 def register(command, replace=None):
     """ 将函数注册为命令
@@ -79,8 +81,13 @@ class Command(object):
         for _, name, _list in lst:
             info.append(u"== {0} ==".format(name))
             for item in _list:
-                info.append(u"({1}){0}[{2}]".format(
-                    item.markname or item.nick, item._id, item.status))
+                if item.markname:
+                    nick = u"{0}({1})".format(item.markname, item.nick)
+                else:
+                    nick = item.nick
+
+                info.append(u"({1}){0}[{2}]".format(nick, item._id,
+                                                    item.status))
 
         self.xmpp_client.send_control_msg("\n".join(info))
 
@@ -111,3 +118,28 @@ class Command(object):
         """ 给id发送消息, id 是对象的唯一id, content 是发送的内容
         """
         self.qq_client.send_message_with_aid(_id, content)
+
+    @register(r"-qn (\d+)", "-qn id")
+    def get_qq_account(self, _id):
+        """ 获取QQ号码/群号码
+        """
+        uin, _type = UniqueIds.get(int(_id))
+
+        if _type == UniqueIds.T_FRI:
+            tys = u"QQ号码"
+            friends = self.qq_client.hub.get_friends()
+            name = friends.get_show_name(uin)
+        elif _type == UniqueIds.T_GRP:
+            tys = u"群号"
+            groups = self.qq_client.hub.get_groups()
+            name = groups.get_group_name(uin)
+        else:
+            self.xmpp_client.send_control_msg(u"{0} 不是群或者好友".format(_id))
+            return
+
+        account = self.qq_client.hub.get_account(uin, _type)
+        if account:
+            msg = u"{0} 的{2}是 {1}".format(name, account, tys)
+        else:
+            msg = u"获取{0}的{1}失败".format(name, tys)
+        self.xmpp_client.send_control_msg(msg)
