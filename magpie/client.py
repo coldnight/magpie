@@ -51,11 +51,11 @@ class MagpieClient(EventHandler, XMPPFeatureHandler):
     """
 
     def __init__(self, QQ, QQ_PWD, xmpp_account, xmpp_pwd, control_account,
-                 debug=True):
+                 debug=True, command=None):
         self.input_queue = InputQueue(self.send_control_msg)
         self.qq = QQClient(QQ, QQ_PWD, debug)
         self.qq.set_control_msg(self.send_control_msg, self)
-        self.command = Command(self, self.qq)
+        self.command = command or Command(self, self.qq)
         self.jid = JID(xmpp_account + '/Bridge')
         self.control_account = control_account
 
