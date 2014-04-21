@@ -27,3 +27,4 @@ lib/
 gs/settings.py
 run.py
 *.egg-info/
+dist/

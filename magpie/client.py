@@ -162,7 +162,7 @@ class MagpieClient(EventHandler, XMPPFeatureHandler):
             except:
                 self.send_control_msg(u"处理消息时发生错误:\n{0}"
                                       .format(traceback.format_exc()))
-        logger.info("receive message '{0}' from {1}"
+        logger.info(u"receive message '{0}' from {1}"
                          .format(body, stanza.from_jid))
         return True
 
@@ -223,6 +223,7 @@ class QQClient(WebQQClient):
         args = request.get_back_args(data)
         scode = int(args[0])
         if scode != 0:
+            import pdb;pdb.set_trace()
             self.send_control_msg(args[4])
 
     @register_request_handler(Login2Request)
@@ -246,6 +247,7 @@ class QQClient(WebQQClient):
                                   .format(data.get("retcode")))
             return
         self.send_control_msg(u"[S] WebQQ 登录成功, 你可以发送 -help 查看帮助.")
+        self.xmpp_client.send_status(self.hub.nickname + u"[在线]")
 
     @kick_message_handler
     def handle_kick(self, message):
@@ -269,7 +271,6 @@ class QQClient(WebQQClient):
                                       content))
 
     def send_message_with_aid(self, _id, content):
-        self.xmpp_client.send_status(content)
         uin, _type = UniqueIds.get(int(_id))
         if uin is None or _type is None:
             logger.info(UniqueIds._map)
@@ -353,3 +354,36 @@ class QQClient(WebQQClient):
         self.send_control_msg = cb
         self.xmpp_client = xmpp_client
         self.input_queue = xmpp_client.input_queue
+
+
+def main():
+    import getpass
+    from tornado import options
+    from tornado.log import enable_pretty_logging
+
+    options.define("xmpp", default=None, help="XMPP Account", metavar="XMPP")
+    options.define("qq", default=None, type=int, help="QQ Account",
+                   metavar="QQ")
+    options.define("debug", type=bool, default=False, help="Show debug info")
+    options.define("control", default=None, help="XMPP Control Account",
+                   metavar="CONTROL")
+    options.parse_command_line()
+
+    xmpp = options.options.xmpp
+    qq = options.options.qq
+    control = options.options.control
+    debug = options.options.debug
+    if not xmpp or not qq or not control:
+        options.print_help()
+        return
+
+    xmpp_pwd = getpass.getpass(u"Enter XMPP Password: ")
+    qq_pwd = getpass.getpass(u"Enter QQ Password: ")
+
+    enable_pretty_logging()
+    client = MagpieClient(qq, qq_pwd, xmpp, xmpp_pwd, control, debug)
+    client.run()
+
+
+if __name__ == "__main__":
+    main()

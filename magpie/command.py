@@ -7,9 +7,12 @@
 #   Desc    :   命令解析
 #
 import re
+import logging
 import inspect
 
 from twqq.objects import UniqueIds
+
+logger = logging.getLogger("magpie")
 
 
 def register(command, replace=None):
@@ -67,12 +70,17 @@ class Command(object):
         friends = self.qq_client.hub.get_friends()
         cate_map = {}
         for cate in friends.categories:
-            cate_map[cate.index - 1] = {"name": cate.name, "sort":  cate.sort,
+            cate_map[cate.index] = {"name": cate.name, "sort":  cate.sort,
                                         "list": []}
+        logger.info(u"分组信息: {0!r}".format(cate_map))
 
         for item in friends.info:
             if item.status in ["online", "away"]:
-                cate_map[item.categories]["list"].append(item)
+                try:
+                    cate_map[item.categories]["list"].append(item)
+                except KeyError:
+                    logger.info(u"{0} 分组错误: {1!r}".format(item.nick, cate_map),
+                                exc_info=True)
 
         lst = [(x.get("sort"), x.get("name"), x.get("list"))
                for x in cate_map.values()]

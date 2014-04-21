@@ -15,12 +15,15 @@ requires = ["tornado", "pycurl", "tornadohttpclient", "twqq==0.2.3",
 packages = ["magpie"]
 
 entry_points = {
+    "console_scripts": [
+        "magpie = magpie.client:main",
+    ]
 }
 
 
 setup(
     name = "magpie",
-    version = magpie.__version__,
+    version = '.'.join(map(str, magpie.__version__)),
     description = "An application bridging WebQQ and XMPP",
     long_description = open("README.rst").read(),
     author = 'cold',
