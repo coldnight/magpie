@@ -319,10 +319,9 @@ class QQClient(WebQQClient):
     def handle_discu_message(self, did, from_uin, content, source):
         name = self.hub.get_discu().get_name(did)
         mname = self.hub.get_discu().get_mname(did, from_uin)
-        msg = "[D][{0}({1})][{2}({3})] {4}".format(name, UniqueIds.get_id(did),
-                                                   mname,
-                                                   UniqueIds.get_id(from_uin),
-                                                   content)
+        msg = u"[D][{0}({1})][{2}({3})] {4}".format(
+            name, UniqueIds.get_id(did), mname, UniqueIds.get_id(from_uin),
+            content)
         self.send_control_msg(msg)
 
     def send_discu_with_nick(self, nick, did, content):
