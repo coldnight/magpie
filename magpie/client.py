@@ -156,7 +156,9 @@ class MagpieClient(EventHandler, XMPPFeatureHandler):
                         return True
                     self.input_queue.input(body)
                 else:
-                    self.command.parse(body)
+                    if self.command.parse(body) is None:
+                        self.send_control_msg(u"你想做什么? 可以发送"
+                                              u"-help 查看帮助.")
             except:
                 self.send_control_msg(u"处理消息时发生错误:\n{0}"
                                       .format(traceback.format_exc()))

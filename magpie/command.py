@@ -46,6 +46,7 @@ class Command(object):
             sre = pattern.match(command)
             if sre:
                 handler(*sre.groups(), **sre.groupdict())
+                return True
 
     @register(r'-help')
     def help_info(self):
