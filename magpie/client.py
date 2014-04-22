@@ -32,7 +32,7 @@ from twqq.requests import system_message_handler, group_message_handler
 from twqq.requests import buddy_message_handler, BeforeLoginRequest
 from twqq.requests import file_message_handler
 from twqq.requests import register_request_handler
-from twqq.requests import Login2Request, FriendInfoRequest
+from twqq.requests import Login2Request, FriendInfoRequest, BuddyMsgRequest
 from twqq.requests import sess_message_handler, discu_message_handler
 from twqq.objects import UniqueIds
 
@@ -136,13 +136,13 @@ class MagpieClient(EventHandler, XMPPFeatureHandler):
                                                     .format(stanza.from_jid))
         return True
 
-    @presence_stanza_handler(None)
-    def handle_presence_available(self, stanza):
-        logger.info(r"{0} has been online".format(stanza.from_jid))
+    # @presence_stanza_handler(None)
+    # def handle_presence_available(self, stanza):
+    #     logger.info(r"{0} has been online".format(stanza.from_jid))
 
-    @presence_stanza_handler("unavailable")
-    def handle_presence_unavailable(self, stanza):
-        logger.info(r"{0} has been offline".format(stanza.from_jid))
+    # @presence_stanza_handler("unavailable")
+    # def handle_presence_unavailable(self, stanza):
+    #     logger.info(r"{0} has been offline".format(stanza.from_jid))
 
     @message_stanza_handler()
     def handle_message(self, stanza):
@@ -223,8 +223,7 @@ class QQClient(WebQQClient):
         args = request.get_back_args(data)
         scode = int(args[0])
         if scode != 0:
-            import pdb;pdb.set_trace()
-            self.send_control_msg(args[4])
+            self.send_control_msg(args[4].decode("utf-8"))
 
     @register_request_handler(Login2Request)
     def handle_login_errorcode(self, request, resp, data):
@@ -236,6 +235,15 @@ class QQClient(WebQQClient):
             self.send_control_msg(u"[S] WebQQ 登录失败: {0}"
                                   .format(data.get("retcode")))
 
+    @register_request_handler(BuddyMsgRequest)
+    def handle_buddy_msg(self, request, response, data):
+        if data is None:
+            logger.info(u"无法发送消息, 重新登录")
+            self.send_control_msg(u"[S] 无法发送消息, 重新登录")
+            self.xmpp_client.send_status(self.hub.nickname + u"[重新登录中..]")
+            self.disconnect()
+            self.connect()
+
     @register_request_handler(FriendInfoRequest)
     def handle_frind_info_erro(self, request, resp, data):
         if not resp.body:
@@ -246,8 +254,11 @@ class QQClient(WebQQClient):
             self.send_control_msg(u"[S] WebQQ 获取好友列表失败"
                                   .format(data.get("retcode")))
             return
-        self.send_control_msg(u"[S] WebQQ 登录成功, 你可以发送 -help 查看帮助.")
-        self.xmpp_client.send_status(self.hub.nickname + u"[在线]")
+
+        if not hasattr(self, "_logined"):
+            self.send_control_msg(u"[S] WebQQ 登录成功, 你可以发送 -help 查看帮助.")
+            self.xmpp_client.send_status(self.hub.nickname + u"[在线]")
+            self._logined = True
 
     @kick_message_handler
     def handle_kick(self, message):
@@ -342,13 +353,12 @@ class QQClient(WebQQClient):
 
     @register_request_handler(PollMessageRequest)
     def handle_qq_errcode(self, request, resp, data):
-        if data and data.get("retcode") in [100006]:
+        if data and data.get("retcode") in [100006, 103, 100002]:
             logger.error(u"获取登出消息 {0!r}".format(data))
-            self.hub.relogin()
-
-        if data and data.get("retcode") in [103, 100002]:  # 103重新登陆不成功, 暂时退出
-            logger.error(u"获取登出消息 {0!r}".format(data))
-            exit()
+            self.send_control_msg("[S] 获取登出消息, 重新登录")
+            self.xmpp_client.send_status(self.hub.nickname + u"[重新登录中..]")
+            self.disconnect()
+            self.connect()
 
     def set_control_msg(self, cb, xmpp_client):
         self.send_control_msg = cb

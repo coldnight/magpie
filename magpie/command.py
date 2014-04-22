@@ -29,6 +29,7 @@ def register(command, replace=None):
 
 
 class Command(object):
+
     def __init__(self, xmpp_client, qq_client):
         self.xmpp_client = xmpp_client
         self.qq_client = qq_client
@@ -41,7 +42,8 @@ class Command(object):
                 continue
 
             self._command_map[handler._command] = (
-                re.compile(handler._command), handler, handler._replace
+                re.compile(handler._command, flags=re.M | re.S),
+                handler, handler._replace
             )
 
     def parse(self, command):
@@ -152,3 +154,25 @@ class Command(object):
         else:
             msg = u"获取{0}的{1}失败".format(name, tys)
         self.xmpp_client.send_control_msg(msg)
+
+    @register(r'-restart')
+    def restart_webqq(self):
+        """ 重新登录WebQQ
+        """
+        self.xmpp_client.send_status(u"重新登陆...")
+        self.qq_client.hub.disconnect()
+        self.qq_client.hub.connect()
+
+    @register(r'-stop')
+    def stop_webqq(self):
+        """ 退出WebQQ
+        """
+        self.xmpp_client.send_status(u"WebQQ登出")
+        self.qq_client.disconnect()
+
+    @register(r'-start')
+    def start_webqq(self):
+        """ 启动WebQQ
+        """
+        self.xmpp_client.send_status(u"WebQQ登录中")
+        self.qq_client.connect()
