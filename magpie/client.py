@@ -308,7 +308,8 @@ class QQClient(WebQQClient):
         nick = self.hub.get_group_member_nick(gcode, from_uin)
         gid = UniqueIds.get_id(gcode)
         mid = UniqueIds.get_id(from_uin)
-        msg = u"[T][{0}({1}) 来自 {2}({3})]".format(nick, mid, gname, gid)
+        msg = u"[T][{0}({1}) 来自 {2}({3})] {4}".format(nick, mid, gname, gid,
+                                                          content)
         self.send_control_msg(msg)
 
     @file_message_handler
