@@ -293,12 +293,23 @@ class QQClient(WebQQClient):
             self.hub.send_buddy_msg(uin, content)
         elif _type == UniqueIds.T_DIS:
             self.hub.send_discu_msg(uin, content)
-        # elif _type == UniqueIds.T_TMP:
-        #     self.hub.send_sess_msg(uin, content)
+        elif _type == UniqueIds.T_TMP:
+            groups = self.hub.get_groups()
+            for grp in groups:
+                if uin in grp:
+                    self.hub.send_sess_msg(grp.gid, uin, content)
+                    break
 
     @sess_message_handler
     def handle_sess_message(self, qid, from_uin, content, source):
-        pass
+        groups = self.hub.get_groups()
+        gcode = groups.get_gcode(qid)
+        gname = groups.get_group_name(gcode)
+        nick = self.hub.get_group_member_nick(gcode, from_uin)
+        gid = UniqueIds.get_id(gcode)
+        mid = UniqueIds.get_id(from_uin)
+        msg = u"[T][{0}({1}) 来自 {2}({3})]".format(nick, mid, gname, gid)
+        self.send_control_msg(msg)
 
     @file_message_handler
     def handle_file_message(self, from_uin, to_uin, lcid, guid, is_cancel,
@@ -353,7 +364,8 @@ class QQClient(WebQQClient):
 
     @register_request_handler(PollMessageRequest)
     def handle_qq_errcode(self, request, resp, data):
-        if data and data.get("retcode") in [100006, 103, 100002]:
+        if data and isinstance(data, dict) and\
+                data.get("retcode") in [100006, 103, 100002]:
             logger.error(u"获取登出消息 {0!r}".format(data))
             self.send_control_msg("[S] 获取登出消息, 重新登录")
             self.xmpp_client.send_status(self.hub.nickname + u"[重新登录中..]")

@@ -176,3 +176,19 @@ class Command(object):
         """
         self.xmpp_client.send_status(u"WebQQ登录中")
         self.qq_client.connect()
+
+    @register(r'-gr (\d+)', '-gr id')
+    def refresh_group(self, _id):
+        """ 手动刷新 id 对应群的成员信息
+        """
+        r, info = self.qq_client.hub.refresh_group_info(_id)
+        if not r:
+            self.xmpp_client.send_control_msg(u"[S] {0}".format(info))
+        else:
+            self.xmpp_client.send_control_msg(u"[S] 刷新 {0} 成员信息"
+                                              .format(info))
+
+    @register(r'-fr')
+    def refresh_friend_info(self):
+        self.qq_client.hub.refresh_friend_info()
+        self.xmpp_client.send_control_msg(u"[S] 刷新好友信息")
